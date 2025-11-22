@@ -18,16 +18,50 @@
             --line-glow: #00f3ff;
             --text-main: #e0f7fa;
             --neon-blue: #00f3ff; --neon-pink: #bc13fe; --neon-red: #ff073a; --neon-green: #39ff14;
-            --neon-orange: #ff9f43; /* 新增橙色用于认输按钮 */
+            --neon-orange: #ff9f43;
             --c-normal: #7f8c8d; --c-shock: #ff9f43; --c-bomb: #ff073a; --c-convert: #d63031; --c-speed: #00f3ff; --c-assimilate: #39ff14;
         }
 
-        body { margin: 0; padding: 0; font-family: "Microsoft YaHei", "Segoe UI", monospace; background: radial-gradient(circle at 50% -20%, #1a0b2e 0%, #000000 100%); color: var(--text-main); display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; user-select: none; }
+        body { margin: 0; padding: 0; font-family: "Microsoft YaHei", "Segoe UI", monospace; background: radial-gradient(circle at 50% -20%, #1a0b2e 0%, #000000 100%); color: var(--text-main); display: flex; justify-content: center; align-items: center; height: 100vh; height: 100dvh; overflow: hidden; user-select: none; }
         body::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: -1; }
-        #app { display: flex; background-color: var(--panel-bg); backdrop-filter: blur(12px); border-radius: 24px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 20px 50px rgba(0,0,0,0.8); width: 1100px; height: 720px; overflow: hidden; position: relative; }
         
-        #board-section { flex: 0 0 700px; background: transparent; display: flex; justify-content: center; align-items: center; position: relative; }
-        #board { width: 540px; height: 540px; background-color: var(--board-bg); position: relative; border-radius: 12px; padding: 10px; border: 1px solid rgba(0, 243, 255, 0.2); box-shadow: 0 0 30px rgba(0, 243, 255, 0.05); transition: box-shadow 0.3s, border-color 0.3s; }
+        /* 📱 移动端布局核心修正 */
+        #app { 
+            display: flex; flex-direction: column; /* 手机默认竖排 */
+            background-color: var(--panel-bg); backdrop-filter: blur(12px); 
+            width: 100%; height: 100%; 
+            overflow: hidden; position: relative; 
+        }
+        
+        /* 💻 电脑端布局适配 (宽度大于 800px 时横排) */
+        @media (min-width: 800px) {
+            #app {
+                flex-direction: row;
+                border-radius: 24px;
+                box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 20px 50px rgba(0,0,0,0.8);
+                width: 1100px; height: 720px;
+            }
+        }
+        
+        /* 棋盘容器：手机上占更多空间 */
+        #board-section { 
+            flex: 1; 
+            background: transparent; 
+            display: flex; justify-content: center; align-items: center; 
+            position: relative; 
+            padding: 10px;
+        }
+        
+        /* 📱 棋盘核心响应式 CSS */
+        #board { 
+            width: 95vw; /* 手机宽度占 95% */
+            max-width: 540px; /* 电脑最大 540px */
+            aspect-ratio: 1 / 1; /* 强制保持正方形 */
+            height: auto; /* 高度自动 */
+            background-color: var(--board-bg); position: relative; border-radius: 12px; padding: 5px; 
+            border: 1px solid rgba(0, 243, 255, 0.2); box-shadow: 0 0 30px rgba(0, 243, 255, 0.05); 
+            transition: box-shadow 0.3s, border-color 0.3s; 
+        }
         #board.speed-mode { border-color: var(--neon-blue); box-shadow: 0 0 30px var(--neon-blue), inset 0 0 20px var(--neon-blue); animation: pulseBorder 0.2s infinite alternate; }
         @keyframes pulseBorder { from { opacity: 0.8; } to { opacity: 1; } }
 
@@ -46,57 +80,92 @@
         .stone.flipping { animation: flipAnim 0.4s cubic-bezier(0.455, 0.03, 0.515, 0.955); }
         @keyframes flipAnim { 0% { transform: translate(-50%,-50%) scale(1); filter: brightness(1); } 50% { transform: translate(-50%,-50%) scale(0.1, 1); filter: brightness(2) hue-rotate(180deg); } 100% { transform: translate(-50%,-50%) scale(1); filter: brightness(1); } }
 
-        #sidebar { flex: 1; padding: 30px; display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        h2 { margin: 0; font-size: 24px; color: var(--neon-blue); letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); font-family: "Microsoft YaHei"; }
-        .turn-badge { font-size: 12px; padding: 6px 15px; border-radius: 4px; background: rgba(0,0,0,0.5); color: #aaa; border: 1px solid #444; font-family: "Microsoft YaHei"; }
+        /* 📱 侧边栏/控制区适配 */
+        #sidebar { 
+            flex: 0 0 auto; /* 不伸缩 */
+            padding: 15px; 
+            display: flex; flex-direction: column; 
+            background: rgba(0,0,0,0.2); 
+            border-top: 1px solid rgba(255,255,255,0.1);
+            gap: 10px;
+        }
+        @media (min-width: 800px) {
+            #sidebar { flex: 1; padding: 30px; border-left: 1px solid rgba(255,255,255,0.1); border-top: none; gap: 20px; }
+        }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        h2 { margin: 0; font-size: 18px; color: var(--neon-blue); letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); font-family: "Microsoft YaHei"; }
+        .turn-badge { font-size: 12px; padding: 4px 10px; border-radius: 4px; background: rgba(0,0,0,0.5); color: #aaa; border: 1px solid #444; font-family: "Microsoft YaHei"; }
         .turn-badge.safe { color: var(--neon-green); border-color: var(--neon-green); background: rgba(57, 255, 20, 0.1); box-shadow: 0 0 10px rgba(57, 255, 20, 0.2); }
 
-        .scores { display: flex; gap: 15px; margin-bottom: 20px; }
-        .p-card { flex: 1; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; border: 1px solid transparent; transition: 0.3s; }
+        .scores { display: flex; gap: 10px; margin-bottom: 5px; }
+        .p-card { flex: 1; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; border: 1px solid transparent; transition: 0.3s; }
         .p-card.active { border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.1); box-shadow: 0 0 15px rgba(0, 243, 255, 0.2); }
-        .p-name { font-size: 12px; color: #ccc; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; letter-spacing: 1px;}
-        .p-score { font-size: 24px; font-weight: bold; color: #fff; font-family: monospace; }
+        .p-name { font-size: 12px; color: #ccc; margin-bottom: 2px; display: flex; align-items: center; gap: 5px; letter-spacing: 1px;}
+        .p-score { font-size: 18px; font-weight: bold; color: #fff; font-family: monospace; }
         .dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 5px currentColor;}
 
-        .decks-area { display: flex; justify-content: space-between; margin-bottom: 20px; height: 70px; }
+        .decks-area { display: none; } /* 手机屏太小，隐藏牌堆背面，只显示当前卡 */
+        @media (min-width: 800px) { .decks-area { display: flex; justify-content: space-between; margin-bottom: 20px; height: 70px; } }
+        
         .deck-container { width: 45%; position: relative; display: flex; align-items: flex-end; justify-content: center; }
         .card-back { position: absolute; width: 50px; height: 70px; background: linear-gradient(135deg, #2d3436 0%, #000 100%); border: 1px solid #555; border-radius: 6px; box-shadow: 0 -4px 10px rgba(0,0,0,0.8); }
-        .card-back::after { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width: 20px; height: 20px; border: 2px solid #444; border-radius: 50%; }
         .deck-count { position: absolute; bottom: -20px; font-size: 10px; color: #666; width: 100%; text-align: center; font-family: monospace; }
 
-        .card-stage { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; perspective: 1000px; margin-bottom: 20px; }
-        .event-card { width: 240px; height: 320px; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px); border-radius: 16px; border: 1px solid rgba(255,255,255,0.2); padding: 25px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.8); display: flex; flex-direction: column; transform-style: preserve-3d; animation: cardPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); position: relative; overflow: hidden; }
+        /* 卡牌展示优化 */
+        .card-stage { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; perspective: 1000px; margin-bottom: 5px; min-height: 100px; }
+        .event-card { 
+            width: 100%; max-width: 300px; height: 100px; /* 手机变横条 */
+            background: rgba(10, 10, 10, 0.9); backdrop-filter: blur(10px); 
+            border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); 
+            padding: 10px; text-align: left; box-shadow: 0 5px 20px rgba(0,0,0,0.8); 
+            display: flex; flex-direction: row; align-items: center; gap: 15px;
+            transform-style: preserve-3d; animation: cardPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); 
+            position: relative; overflow: hidden; 
+        }
+        @media (min-width: 800px) {
+            .event-card { width: 240px; height: 320px; flex-direction: column; text-align: center; gap: 0; padding: 25px;}
+        }
+
         .event-card::before { content:''; position: absolute; top:0; left:0; width:100%; height:100%; background: linear-gradient(to bottom, transparent 50%, rgba(255,255,255,0.05) 50%); background-size: 100% 4px; pointer-events: none; }
-        @keyframes cardPop { from { transform: rotateY(-90deg) scale(0.5); opacity: 0; } to { transform: rotateY(0) scale(1); opacity: 1; } }
+        @keyframes cardPop { from { transform: rotateX(-90deg) scale(0.5); opacity: 0; } to { transform: rotateX(0) scale(1); opacity: 1; } }
         .card-flash { position: absolute; top:0; left:0; width:100%; height:100%; background: white; opacity: 0; pointer-events: none; z-index: 100; animation: flashAnim 0.3s; }
         @keyframes flashAnim { 0% { opacity: 0.8; } 100% { opacity: 0; } }
 
-        .ec-icon { font-size: 60px; margin: 20px 0; filter: drop-shadow(0 0 15px currentColor); }
-        .ec-title { font-size: 22px; font-weight: bold; color: #fff; margin-bottom: 10px; letter-spacing: 2px; text-transform: uppercase; }
-        .ec-desc { font-size: 13px; color: #ccc; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; margin-top: auto; }
+        .ec-icon { font-size: 40px; filter: drop-shadow(0 0 10px currentColor); flex-shrink: 0; }
+        @media (min-width: 800px) { .ec-icon { font-size: 60px; margin: 20px 0; } }
+        
+        .ec-content { display: flex; flex-direction: column; flex: 1; }
+        
+        .ec-title { font-size: 18px; font-weight: bold; color: #fff; letter-spacing: 1px; text-transform: uppercase; }
+        @media (min-width: 800px) { .ec-title { font-size: 22px; margin-bottom: 10px; letter-spacing: 2px; } }
+        
+        .ec-desc { font-size: 12px; color: #ccc; line-height: 1.4; }
+        @media (min-width: 800px) { .ec-desc { font-size: 13px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; margin-top: auto; } }
+
         .c-shock { border-color: var(--c-shock); box-shadow: 0 0 20px rgba(255, 159, 67, 0.3), inset 0 0 20px rgba(255, 159, 67, 0.1); } .c-shock .ec-icon { color: var(--c-shock); }
         .c-bomb { border-color: var(--c-bomb); box-shadow: 0 0 20px rgba(255, 7, 58, 0.3), inset 0 0 20px rgba(255, 7, 58, 0.1); } .c-bomb .ec-icon { color: var(--c-bomb); }
         .c-convert { border-color: var(--c-convert); box-shadow: 0 0 20px rgba(155, 89, 182, 0.3), inset 0 0 20px rgba(155, 89, 182, 0.1); } .c-convert .ec-icon { color: var(--c-convert); }
         .c-speed { border-color: var(--c-speed); box-shadow: 0 0 20px rgba(0, 243, 255, 0.3), inset 0 0 20px rgba(0, 243, 255, 0.1); } .c-speed .ec-icon { color: var(--c-speed); }
         .c-assimilate { border-color: var(--c-assimilate); box-shadow: 0 0 20px rgba(57, 255, 20, 0.3), inset 0 0 20px rgba(57, 255, 20, 0.1); } .c-assimilate .ec-icon { color: var(--c-assimilate); }
 
-        #log { height: 80px; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 6px; padding: 10px; font-size: 12px; color: #00f3ff; font-family: monospace; margin-bottom: 10px; border: 1px solid rgba(0, 243, 255, 0.1); }
-        .log-line { border-bottom: 1px solid rgba(0, 243, 255, 0.1); padding: 4px 0; }
+        #log { height: 60px; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 6px; padding: 5px; font-size: 10px; color: #00f3ff; font-family: monospace; margin-bottom: 10px; border: 1px solid rgba(0, 243, 255, 0.1); }
+        .log-line { border-bottom: 1px solid rgba(0, 243, 255, 0.1); padding: 2px 0; }
 
-        .controls { display: flex; gap: 15px; }
-        button { flex: 1; padding: 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: #000; transition: 0.2s; font-size: 14px; letter-spacing: 1px; }
-        button:active { transform: scale(0.95); }
+        .controls { display: flex; gap: 10px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: #000; transition: 0.2s; font-size: 12px; letter-spacing: 1px; }
+        @media (min-width: 800px) { button { padding: 15px; font-size: 14px; } }
+        
         .btn-pass { background: var(--c-normal); color: #fff; } 
         .btn-pass:hover { background: #95a5a6; box-shadow: 0 0 10px #95a5a6; }
         
-        .btn-resign { background: var(--neon-orange); color: #fff; } /* 认输按钮样式 */
+        .btn-resign { background: var(--neon-orange); color: #fff; }
         .btn-resign:hover { background: #e67e22; box-shadow: 0 0 15px var(--neon-orange); }
 
         .btn-reset { background: var(--neon-red); color: #fff; } 
         .btn-reset:hover { background: #ff3f34; box-shadow: 0 0 15px var(--neon-red); }
 
-        #toast { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.9); color: var(--neon-blue); padding: 12px 40px; border-radius: 4px; font-weight: bold; border: 1px solid var(--neon-blue); box-shadow: 0 0 20px var(--neon-blue); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 200; font-family: "Microsoft YaHei"; text-transform: uppercase; }
+        #toast { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.9); color: var(--neon-blue); padding: 12px 40px; border-radius: 4px; font-weight: bold; border: 1px solid var(--neon-blue); box-shadow: 0 0 20px var(--neon-blue); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 200; font-family: "Microsoft YaHei"; text-transform: uppercase; width: 80%; text-align: center; }
         
         /* 特效与浮动文字 */
         #vfx-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; overflow: hidden; }
@@ -111,15 +180,15 @@
         .floating-text { position: absolute; pointer-events: none; z-index: 50; font-family: 'Microsoft YaHei', sans-serif; font-weight: bold; font-size: 24px; color: #fff; text-shadow: 0 0 5px var(--neon-blue); animation: floatUp 1s ease-out forwards; }
         .floating-text.crit { font-size: 40px; color: var(--neon-red); text-shadow: 0 0 10px var(--neon-red), 0 0 20px #000; }
         @keyframes floatUp { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 20% { transform: translate(-50%, -100%) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -200%) scale(1); opacity: 0; } }
-        .big-announcement { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; font-weight: 900; color: #fff; text-shadow: 0 0 20px var(--neon-pink); z-index: 100; pointer-events: none; white-space: nowrap; animation: zoomInFade 1.5s ease-out forwards; font-family: "Microsoft YaHei"; }
+        .big-announcement { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; font-weight: 900; color: #fff; text-shadow: 0 0 20px var(--neon-pink); z-index: 100; pointer-events: none; white-space: nowrap; animation: zoomInFade 1.5s ease-out forwards; font-family: "Microsoft YaHei"; }
         @keyframes zoomInFade { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 80% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
         .shake-screen { animation: screenShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes screenShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} }
 
         /* 联机大厅 */
         #lobby-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(20px); z-index: 200; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s; }
-        .lobby-box { background: rgba(20,20,20,0.8); padding: 40px; border-radius: 16px; border: 1px solid var(--neon-blue); text-align: center; box-shadow: 0 0 50px rgba(0, 243, 255, 0.2); width: 80%; max-width: 400px; }
-        .lobby-title { font-size: 40px; font-weight: bold; margin-bottom: 40px; color: var(--neon-blue); letter-spacing: 5px; text-shadow: 0 0 20px var(--neon-blue); font-family: "Microsoft YaHei"; }
+        .lobby-box { background: rgba(20,20,20,0.8); padding: 30px; border-radius: 16px; border: 1px solid var(--neon-blue); text-align: center; box-shadow: 0 0 50px rgba(0, 243, 255, 0.2); width: 85%; max-width: 400px; }
+        .lobby-title { font-size: 32px; font-weight: bold; margin-bottom: 30px; color: var(--neon-blue); letter-spacing: 5px; text-shadow: 0 0 20px var(--neon-blue); font-family: "Microsoft YaHei"; }
         .lobby-btn { display: block; width: 100%; padding: 15px; margin-bottom: 15px; border: 1px solid var(--neon-blue); background: transparent; color: var(--neon-blue); font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; letter-spacing: 2px; }
         .lobby-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
         .room-code-display { margin-top: 20px; border-top: 1px dashed #444; padding-top: 20px; }
@@ -251,11 +320,12 @@ const SFX = {
     }
 };
 
-// 增强版 Juice (特效)
 const Juice = {
     spawnParticles(x, y, color, count = 12) {
         const layer = document.getElementById('vfx-layer');
-        const cellSize = 540 / 9;
+        const boardEl = document.getElementById('board');
+        const rect = boardEl.getBoundingClientRect();
+        const cellSize = rect.width / 9;
         const centerX = x * cellSize + cellSize/2;
         const centerY = y * cellSize + cellSize/2;
         for (let i = 0; i < count; i++) {
@@ -271,7 +341,9 @@ const Juice = {
     },
     showFloatingText(x, y, text, isCrit = false) {
         const layer = document.getElementById('vfx-layer');
-        const cellSize = 540 / 9;
+        const boardEl = document.getElementById('board');
+        const rect = boardEl.getBoundingClientRect();
+        const cellSize = rect.width / 9;
         const el = document.createElement('div');
         el.className = isCrit ? 'floating-text crit' : 'floating-text';
         el.innerText = text;
@@ -290,14 +362,20 @@ const Juice = {
 const VFX = {
     spawnRipple(x, y) {
         const layer = document.getElementById('vfx-layer');
+        const boardEl = document.getElementById('board');
+        const rect = boardEl.getBoundingClientRect();
+        const cellSize = rect.width / 9;
         const div = document.createElement('div'); div.className = 'vfx-ripple';
-        div.style.left = (x * 60 + 30) + 'px'; div.style.top = (y * 60 + 30) + 'px';
+        div.style.left = (x * cellSize + cellSize/2) + 'px'; div.style.top = (y * cellSize + cellSize/2) + 'px';
         layer.appendChild(div); setTimeout(() => div.remove(), 500);
     },
     spawnShield(x, y) {
         const layer = document.getElementById('vfx-layer');
+        const boardEl = document.getElementById('board');
+        const rect = boardEl.getBoundingClientRect();
+        const cellSize = rect.width / 9;
         const div = document.createElement('div'); div.className = 'vfx-shield';
-        div.style.left = (x * 60 + 30) + 'px'; div.style.top = (y * 60 + 30) + 'px';
+        div.style.left = (x * cellSize + cellSize/2) + 'px'; div.style.top = (y * cellSize + cellSize/2) + 'px';
         layer.appendChild(div); setTimeout(() => div.remove(), 300);
     },
     shakeScreen() {
@@ -380,9 +458,13 @@ const Lobby = {
         });
     },
     copy() {
-        navigator.clipboard.writeText(this.roomId);
-        alert("口令已复制");
-        // 房主直接进入游戏等待
+        // 兼容性复制
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(this.roomId).then(() => alert("口令已复制"));
+        } else {
+            prompt("请手动复制口令：", this.roomId);
+        }
+        
         document.getElementById('lobby-overlay').style.opacity = 0;
         setTimeout(() => document.getElementById('lobby-overlay').style.display='none', 500);
         document.getElementById('online-status').style.display = 'inline-block';
@@ -405,6 +487,7 @@ const Game = {
     decks: { [BLACK]: [], [WHITE]: [] }, captures: { [BLACK]: 0, [WHITE]: 0 },
     frozen: { [BLACK]: false, [WHITE]: false },
     currentEvent: null, extraMoves: 0, passCount: 0, gameOver: false, lastMove: null,
+    ko: null, 
 
     init() {
         this.board = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(EMPTY));
@@ -414,6 +497,7 @@ const Game = {
         this.captures = { [BLACK]: 0, [WHITE]: 0 };
         this.frozen = { [BLACK]: false, [WHITE]: false };
         this.passCount = 0; this.gameOver = false; this.lastMove = null;
+        this.ko = null;
 
         const baseDeck = [EVENTS.SHOCK, EVENTS.BOMB, EVENTS.CONVERT, EVENTS.SPEED, EVENTS.ASSIMILATE, EVENTS.BOMB];
         this.decks[BLACK] = this.shuffle([...baseDeck]);
@@ -425,28 +509,19 @@ const Game = {
 
     shuffle(arr) { return arr.sort(() => Math.random() - 0.5); },
 
-    // 序列化状态
     exportState() {
         return {
-            board: this.board,
-            turn: this.turn,
-            turnCount: this.turnCount,
-            captures: this.captures,
-            frozen: this.frozen,
+            board: this.board, turn: this.turn, turnCount: this.turnCount,
+            captures: this.captures, frozen: this.frozen,
             eventId: this.currentEvent ? this.currentEvent.id : 'normal',
-            extraMoves: this.extraMoves,
-            lastMove: this.lastMove,
-            safeLimit: this.safeLimit,
-            prevBoardHash: this.prevBoardHash,
-            passCount: this.passCount,
-            gameOver: this.gameOver
+            extraMoves: this.extraMoves, lastMove: this.lastMove,
+            safeLimit: this.safeLimit, prevBoardHash: this.prevBoardHash,
+            passCount: this.passCount, gameOver: this.gameOver, ko: this.ko
         };
     },
     
-    // 反序列化状态 (接收网络数据)
     importState(state) {
-        // 只有当 turn 改变，或者有新的操作时才刷新
-        if (state.turnCount === this.turnCount && state.turn === this.turn && JSON.stringify(state.board) === JSON.stringify(this.board)) return;
+        if (state.turnCount === this.turnCount && state.turn === this.turn && JSON.stringify(state.board) === JSON.stringify(this.board) && state.gameOver === this.gameOver) return;
 
         this.board = state.board || this.board;
         this.turn = (state.turn !== undefined) ? state.turn : this.turn;
@@ -459,8 +534,8 @@ const Game = {
         this.prevBoardHash = state.prevBoardHash || "";
         this.passCount = state.passCount || 0;
         this.gameOver = !!state.gameOver;
+        this.ko = state.ko || null;
         
-        // 恢复事件
         this.currentEvent = EVENTS.NORMAL;
         Object.values(EVENTS).forEach(e => { if(e.id === state.eventId) this.currentEvent = e; });
         
@@ -472,8 +547,6 @@ const Game = {
             UI.toast("游戏已结束");
             return;
         }
-
-        // 如果是我的回合，提示
         if(Lobby.isOnline && this.turn === Lobby.myRole && !this.gameOver) {
             UI.toast("轮到你了！");
         }
@@ -481,8 +554,6 @@ const Game = {
 
     startTurn() {
         if (this.gameOver) return;
-
-        // 联机：如果不是我的回合，不执行逻辑，只等待同步
         if (Lobby.isOnline && Lobby.myRole !== this.turn) return;
 
         if (this.frozen[this.turn]) {
@@ -491,7 +562,6 @@ const Game = {
             return;
         }
 
-        // 抽卡
         let deck = this.decks[this.turn];
         if (this.turnCount < this.safeLimit) {
             this.currentEvent = EVENTS.NORMAL;
@@ -508,7 +578,6 @@ const Game = {
         UI.updateStatus();
         UI.renderCard(this.currentEvent);
         
-        // 同步初始状态
         Lobby.syncState(this.exportState());
 
         if (this.currentEvent.id === 'speed') {
@@ -522,75 +591,57 @@ const Game = {
     },
 
     handleClick(x, y) {
-        // 联机锁
         if (Lobby.isOnline && Lobby.myRole !== this.turn) return UI.toast("等待对方行动");
         if (this.gameOver) return;
         
         const evt = this.currentEvent;
 
-        // 策反逻辑
+        if (this.ko && this.ko.x === x && this.ko.y === y && evt.id !== 'bomb' && evt.id !== 'assimilate' && evt.id !== 'convert') {
+            SFX.play('error'); VFX.spawnShield(x, y); return UI.toast("打劫点：禁止立即提回");
+        }
+
         if (evt.id === 'convert') {
             const opp = this.turn === BLACK ? WHITE : BLACK;
-            if (this.board[y][x] !== opp) {
-                SFX.play('error'); VFX.spawnShield(x, y);
-                return UI.toast("只能策反敌方棋子");
-            }
+            if (this.board[y][x] !== opp) { SFX.play('error'); VFX.spawnShield(x, y); return UI.toast("只能策反敌方棋子"); }
             this.board[y][x] = this.turn;
-            SFX.play('magic'); UI.flipStone(x, y);
-            Juice.spawnParticles(x, y, '#bc13fe', 15);
-            this.resolveCaptures(this.turn);
+            this.lastMove = {x, y}; this.passCount = 0; this.ko = null;
+            SFX.play('magic'); UI.flipStone(x, y); Juice.spawnParticles(x, y, '#bc13fe', 15);
+            this.resolveCaptures(this.turn, x, y);
+            this.prevBoardHash = JSON.stringify(this.board);
             this.endAction();
             return;
         }
 
         if (this.board[y][x] !== EMPTY) return SFX.play('error');
 
-        // 气流震荡
         if (evt.id === 'shock') {
             const opp = this.turn === BLACK ? WHITE : BLACK;
-            const adj = [[0,1],[0,-1],[1,0],[-1,0]];
-            for (let d of adj) {
-                let nx = x+d[0], ny = y+d[1];
-                if (this.onBoard(nx,ny) && this.board[ny][nx] === opp) {
-                    SFX.play('error'); VFX.spawnShield(x, y);
-                    return UI.toast("气流震荡：禁止贴身");
-                }
-            }
+            if([[0,1],[0,-1],[1,0],[-1,0]].some(([dx,dy])=>{
+                let nx=x+dx,ny=y+dy; return nx>=0&&nx<9&&ny>=0&&ny<9 && this.board[ny][nx]===opp;
+            })) { SFX.play('error'); VFX.spawnShield(x, y); return UI.toast("气流震荡：禁止贴身"); }
         }
 
-        // 规则检查
-        let tempBoard = JSON.parse(JSON.stringify(this.board));
-        tempBoard[y][x] = this.turn;
+        let tempBoard = JSON.parse(JSON.stringify(this.board)); tempBoard[y][x] = this.turn;
         if (evt.id !== 'bomb' && evt.id !== 'assimilate') {
-            if (JSON.stringify(tempBoard) === this.prevBoardHash) {
-                SFX.play('error'); return UI.toast("打劫：禁止全局同形");
-            }
+            if (JSON.stringify(tempBoard) === this.prevBoardHash) { SFX.play('error'); return UI.toast("打劫：禁止全局同形"); }
             const opp = this.turn === BLACK ? WHITE : BLACK;
-            if (Logic.findDead(opp, tempBoard).length === 0 && Logic.countLib(x, y, tempBoard, this.turn) === 0) {
-                SFX.play('error'); return UI.toast("禁入点：落子无气");
-            }
+            if (Logic.findDead(opp, tempBoard).length === 0 && Logic.countLib(x, y, tempBoard, this.turn) === 0) { SFX.play('error'); return UI.toast("禁入点：落子无气"); }
         }
 
-        // 落子
         this.board[y][x] = this.turn;
-        this.lastMove = {x, y};
-        this.passCount = 0;
-        SFX.play('stone');
-        Juice.spawnParticles(x, y, this.turn === BLACK ? '#555' : '#fff', 8);
+        this.lastMove = {x, y}; this.passCount = 0;
+        SFX.play('stone'); Juice.spawnParticles(x, y, this.turn === BLACK ? '#555' : '#fff', 8);
         UI.renderBoard();
 
-        // 技能触发
         if (evt.id === 'bomb') this.triggerBomb(x, y);
         else if (evt.id === 'assimilate') this.triggerAssimilate(x, y);
 
-        this.resolveCaptures(this.turn);
+        this.resolveCaptures(this.turn, x, y);
         this.prevBoardHash = JSON.stringify(this.board);
 
         if (evt.id === 'speed') {
             if (this.extraMoves > 0) {
-                this.extraMoves--;
-                Lobby.syncState(this.exportState()); // 更新中间状态
-                return;
+                this.extraMoves--; Lobby.syncState(this.exportState()); return;
             } else {
                 this.frozen[this.turn] = true;
                 document.getElementById('board').classList.remove('speed-mode');
@@ -610,6 +661,7 @@ const Game = {
             }
         });
         UI.renderBoard();
+        this.ko = null;
     },
 
     triggerAssimilate(x, y) {
@@ -623,37 +675,56 @@ const Game = {
             }
         });
         if(hit) SFX.play('magic');
+        this.ko = null;
     },
 
-    resolveCaptures(player) {
+    resolveCaptures(player, lastX, lastY) {
         const opp = player === BLACK ? WHITE : BLACK;
-        const dead = Logic.findDead(opp, this.board);
-        let count = 0;
-        dead.forEach(g => g.forEach(s => { 
-            this.board[s.y][s.x] = EMPTY; count++; 
-            Juice.spawnParticles(s.x, s.y, player===BLACK?'#fff':'#000', 12);
-        }));
-        if (count > 0) {
-            this.captures[player] += count;
+        const deadGroups = Logic.findDead(opp, this.board);
+        let total = 0;
+        let koCandidate = null;
+
+        deadGroups.forEach(group => {
+            total += group.length;
+            if (group.length === 1) koCandidate = { x: group[0].x, y: group[0].y };
+            else koCandidate = null;
+
+            group.forEach(s => {
+                this.board[s.y][s.x] = EMPTY;
+                Juice.spawnParticles(s.x, s.y, player===BLACK?'#fff':'#000', 12);
+            });
+        });
+
+        if (total > 0) {
+            this.captures[player] += total;
             UI.updateStatus(); UI.renderBoard();
-            if (this.lastMove) Juice.showFloatingText(this.lastMove.x, this.lastMove.y, `+${count}`, count>=3);
-            if(count >= 5) { Juice.announce("主宰战场!!"); SFX.play('bomb'); }
-            else if(count >= 3) Juice.announce("大杀特杀!");
+            if (this.lastMove) Juice.showFloatingText(this.lastMove.x, this.lastMove.y, `+${total}`, total>=3);
+            if(total >= 5) { Juice.announce("主宰战场!!"); SFX.play('bomb'); }
+            else if(total >= 3) Juice.announce("大杀特杀!");
         }
-        return count;
+
+        if (total === 1 && koCandidate && lastX !== undefined && lastY !== undefined) {
+            const libs = Logic.countLib(lastX, lastY, this.board, player);
+            if (libs === 1) this.ko = { x: koCandidate.x, y: koCandidate.y };
+            else this.ko = null;
+        } else {
+            this.ko = null;
+        }
+        return total;
     },
 
     endAction() { this.switchTurn(); },
     switchTurn() {
         this.turnCount++;
         this.turn = this.turn === BLACK ? WHITE : BLACK;
-        Lobby.syncState(this.exportState()); // 发送状态
+        Lobby.syncState(this.exportState());
         setTimeout(() => this.startTurn(), 300);
     },
     passTurn() {
         if (Lobby.isOnline && Lobby.myRole !== this.turn) return;
         UI.log(`[${this.pName()}] 虚着`);
         this.passCount++;
+        this.ko = null;
         if (this.passCount >= 2) { 
             this.gameOver = true; 
             Lobby.syncState(this.exportState());
@@ -665,7 +736,6 @@ const Game = {
     },
     resign() {
         if (this.gameOver) return;
-        // 联机模式下，点击即认输
         if (Lobby.isOnline) {
             const loser = Lobby.myRole === BLACK ? '黑方' : '白方';
             this.gameOver = true;
@@ -673,7 +743,6 @@ const Game = {
             Juice.announce(`${loser} 认输！`);
             Lobby.syncState(this.exportState());
         } else {
-            // 本地模式，当前回合方认输
             const loser = this.turn === BLACK ? '黑方' : '白方';
             this.gameOver = true;
             UI.log(`[系统] ${loser} 认输了`);
@@ -763,7 +832,14 @@ const UI = {
     renderCard(evt) {
         const stage = document.getElementById('card-stage');
         const flash = evt.id !== 'normal' ? '<div class="card-flash"></div>' : '';
-        stage.innerHTML = `<div class="event-card ${evt.color}">${flash}<div class="ec-icon">${evt.icon}</div><div class="ec-title">${evt.name}</div><div class="ec-desc">${evt.desc}</div></div>`;
+        stage.innerHTML = `<div class="event-card ${evt.color}">
+            ${flash}
+            <div class="ec-content">
+                <div class="ec-icon">${evt.icon}</div>
+                <div class="ec-title">${evt.name}</div>
+                <div class="ec-desc">${evt.desc}</div>
+            </div>
+        </div>`;
     },
     renderDeck(id, count) {
         const el = document.getElementById(id); el.innerHTML = '';
@@ -772,8 +848,9 @@ const UI = {
             let c = document.createElement('div'); c.className = 'card-back';
             c.style.bottom = (i*5)+'px'; c.style.zIndex = i; el.appendChild(c);
         }
-        if(count>0){ let t=document.createElement('div'); t.className='deck-count'; t.innerText=`余${count}`; el.appendChild(t); }
-        else { let t=document.createElement('div'); t.className='deck-count'; t.innerText='空'; el.appendChild(t); }
+        let t=document.createElement('div'); t.className='deck-count';
+        t.innerText = count>0 ? `余${count}` : '空';
+        el.appendChild(t);
     },
     updateStatus() {
         const isB = Game.turn === BLACK;
@@ -783,14 +860,29 @@ const UI = {
         document.getElementById('score-w').innerText = Game.captures[WHITE];
         
         const ph = document.getElementById('phase-display');
-        if (Game.turnCount < Game.safeLimit) { ph.innerText = `安全期 (${Game.safeLimit - Game.turnCount})`; ph.className = 'turn-badge safe'; }
-        else { ph.innerText = '混沌期'; ph.className = 'turn-badge'; }
+        if (Game.turnCount < Game.safeLimit) {
+            ph.innerText = `安全期 (${Game.safeLimit - Game.turnCount})`;
+            ph.className = 'turn-badge safe';
+        } else {
+            ph.innerText = '混沌期';
+            ph.className = 'turn-badge';
+        }
 
         this.renderDeck('deck-vis-b', Game.decks[BLACK].length);
         this.renderDeck('deck-vis-w', Game.decks[WHITE].length);
     },
-    log(msg) { const d = document.createElement('div'); d.className = 'log-line'; d.innerText = msg; document.getElementById('log').prepend(d); },
-    toast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 2000); }
+    log(msg) {
+        const d = document.createElement('div');
+        d.className = 'log-line'; d.innerText = msg;
+        const log = document.getElementById('log');
+        log.prepend(d);
+    },
+    toast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.style.opacity = 1;
+        setTimeout(() => t.style.opacity = 0, 2000);
+    }
 };
 
 // 只有在非联机模式下才自动启动，联机模式等待创建房间
@@ -807,9 +899,7 @@ document.body.addEventListener('click', () => {
 
 // --- 优化: 尝试保持屏幕常亮 ---
 if ('wakeLock' in navigator) {
-    navigator.wakeLock.request('screen').catch(err => {
-        // 静默失败即可
-    });
+    navigator.wakeLock.request('screen').catch(err => {});
 }
 
 </script>
