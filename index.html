@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>混沌棋 - 霓虹战区 (联机版)</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        /* --- 赛博朋克/霓虹配色方案 --- */
+        :root {
+            --bg-color: #050510;
+            --panel-bg: rgba(20, 25, 40, 0.75);
+            --board-bg: rgba(0, 0, 0, 0.6);
+            --line-color: rgba(0, 243, 255, 0.3);
+            --line-glow: #00f3ff;
+            --text-main: #e0f7fa;
+            --neon-blue: #00f3ff; --neon-pink: #bc13fe; --neon-red: #ff073a; --neon-green: #39ff14;
+            --c-normal: #7f8c8d; --c-shock: #ff9f43; --c-bomb: #ff073a; --c-convert: #d63031; --c-speed: #00f3ff; --c-assimilate: #39ff14;
+        }
+
+        body { margin: 0; padding: 0; font-family: "Microsoft YaHei", "Segoe UI", monospace; background: radial-gradient(circle at 50% -20%, #1a0b2e 0%, #000000 100%); color: var(--text-main); display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; user-select: none; }
+        body::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: -1; }
+        #app { display: flex; background-color: var(--panel-bg); backdrop-filter: blur(12px); border-radius: 24px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 20px 50px rgba(0,0,0,0.8); width: 1100px; height: 720px; overflow: hidden; position: relative; }
+        
+        #board-section { flex: 0 0 700px; background: transparent; display: flex; justify-content: center; align-items: center; position: relative; }
+        #board { width: 540px; height: 540px; background-color: var(--board-bg); position: relative; border-radius: 12px; padding: 10px; border: 1px solid rgba(0, 243, 255, 0.2); box-shadow: 0 0 30px rgba(0, 243, 255, 0.05); transition: box-shadow 0.3s, border-color 0.3s; }
+        #board.speed-mode { border-color: var(--neon-blue); box-shadow: 0 0 30px var(--neon-blue), inset 0 0 20px var(--neon-blue); animation: pulseBorder 0.2s infinite alternate; }
+        @keyframes pulseBorder { from { opacity: 0.8; } to { opacity: 1; } }
+
+        .grid-layer { width: 100%; height: 100%; display: grid; grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(9, 1fr); position: relative; z-index: 5; }
+        .intersect { position: relative; cursor: pointer; }
+        .intersect::before { content: ''; position: absolute; top: 50%; width: 100%; height: 1px; background: var(--line-color); box-shadow: 0 0 2px var(--line-glow); }
+        .intersect::after { content: ''; position: absolute; left: 50%; height: 100%; width: 1px; background: var(--line-color); box-shadow: 0 0 2px var(--line-glow); }
+        .intersect.l-edge::before { left: 50%; width: 50%; } .intersect.r-edge::before { width: 50%; } .intersect.t-edge::after { top: 50%; height: 50%; } .intersect.b-edge::after { height: 50%; }
+        .star-dot { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: var(--neon-blue); border-radius: 50%; transform: translate(-50%, -50%); z-index: 1; box-shadow: 0 0 5px var(--neon-blue); }
+
+        .stone { width: 80%; height: 80%; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .stone.black { background: #1a1a1a; box-shadow: inset 0 0 10px #000, 0 0 10px rgba(188, 19, 254, 0.6); border: 1px solid #bc13fe; }
+        .stone.white { background: #fff; box-shadow: inset 0 0 10px #aaa, 0 0 15px rgba(0, 243, 255, 0.8); border: 1px solid #00f3ff; }
+        .stone.last::after { content: ''; position: absolute; width: 40%; height: 40%; background: var(--neon-red); top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 50%; box-shadow: 0 0 10px var(--neon-red); animation: pulseDot 1s infinite; }
+        @keyframes pulseDot { 0% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
+        .stone.flipping { animation: flipAnim 0.4s cubic-bezier(0.455, 0.03, 0.515, 0.955); }
+        @keyframes flipAnim { 0% { transform: translate(-50%,-50%) scale(1); filter: brightness(1); } 50% { transform: translate(-50%,-50%) scale(0.1, 1); filter: brightness(2) hue-rotate(180deg); } 100% { transform: translate(-50%,-50%) scale(1); filter: brightness(1); } }
+
+        #sidebar { flex: 1; padding: 30px; display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h2 { margin: 0; font-size: 24px; color: var(--neon-blue); letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); font-family: "Microsoft YaHei"; }
+        .turn-badge { font-size: 12px; padding: 6px 15px; border-radius: 4px; background: rgba(0,0,0,0.5); color: #aaa; border: 1px solid #444; font-family: "Microsoft YaHei"; }
+        .turn-badge.safe { color: var(--neon-green); border-color: var(--neon-green); background: rgba(57, 255, 20, 0.1); box-shadow: 0 0 10px rgba(57, 255, 20, 0.2); }
+
+        .scores { display: flex; gap: 15px; margin-bottom: 20px; }
+        .p-card { flex: 1; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; border: 1px solid transparent; transition: 0.3s; }
+        .p-card.active { border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.1); box-shadow: 0 0 15px rgba(0, 243, 255, 0.2); }
+        .p-name { font-size: 12px; color: #ccc; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; letter-spacing: 1px;}
+        .p-score { font-size: 24px; font-weight: bold; color: #fff; font-family: monospace; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 5px currentColor;}
+
+        .decks-area { display: flex; justify-content: space-between; margin-bottom: 20px; height: 70px; }
+        .deck-container { width: 45%; position: relative; display: flex; align-items: flex-end; justify-content: center; }
+        .card-back { position: absolute; width: 50px; height: 70px; background: linear-gradient(135deg, #2d3436 0%, #000 100%); border: 1px solid #555; border-radius: 6px; box-shadow: 0 -4px 10px rgba(0,0,0,0.8); }
+        .card-back::after { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width: 20px; height: 20px; border: 2px solid #444; border-radius: 50%; }
+        .deck-count { position: absolute; bottom: -20px; font-size: 10px; color: #666; width: 100%; text-align: center; font-family: monospace; }
+
+        .card-stage { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; perspective: 1000px; margin-bottom: 20px; }
+        .event-card { width: 240px; height: 320px; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px); border-radius: 16px; border: 1px solid rgba(255,255,255,0.2); padding: 25px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.8); display: flex; flex-direction: column; transform-style: preserve-3d; animation: cardPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); position: relative; overflow: hidden; }
+        .event-card::before { content:''; position: absolute; top:0; left:0; width:100%; height:100%; background: linear-gradient(to bottom, transparent 50%, rgba(255,255,255,0.05) 50%); background-size: 100% 4px; pointer-events: none; }
+        @keyframes cardPop { from { transform: rotateY(-90deg) scale(0.5); opacity: 0; } to { transform: rotateY(0) scale(1); opacity: 1; } }
+        .card-flash { position: absolute; top:0; left:0; width:100%; height:100%; background: white; opacity: 0; pointer-events: none; z-index: 100; animation: flashAnim 0.3s; }
+        @keyframes flashAnim { 0% { opacity: 0.8; } 100% { opacity: 0; } }
+
+        .ec-icon { font-size: 60px; margin: 20px 0; filter: drop-shadow(0 0 15px currentColor); }
+        .ec-title { font-size: 22px; font-weight: bold; color: #fff; margin-bottom: 10px; letter-spacing: 2px; text-transform: uppercase; }
+        .ec-desc { font-size: 13px; color: #ccc; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; margin-top: auto; }
+        .c-shock { border-color: var(--c-shock); box-shadow: 0 0 20px rgba(255, 159, 67, 0.3), inset 0 0 20px rgba(255, 159, 67, 0.1); } .c-shock .ec-icon { color: var(--c-shock); }
+        .c-bomb { border-color: var(--c-bomb); box-shadow: 0 0 20px rgba(255, 7, 58, 0.3), inset 0 0 20px rgba(255, 7, 58, 0.1); } .c-bomb .ec-icon { color: var(--c-bomb); }
+        .c-convert { border-color: var(--c-convert); box-shadow: 0 0 20px rgba(155, 89, 182, 0.3), inset 0 0 20px rgba(155, 89, 182, 0.1); } .c-convert .ec-icon { color: var(--c-convert); }
+        .c-speed { border-color: var(--c-speed); box-shadow: 0 0 20px rgba(0, 243, 255, 0.3), inset 0 0 20px rgba(0, 243, 255, 0.1); } .c-speed .ec-icon { color: var(--c-speed); }
+        .c-assimilate { border-color: var(--c-assimilate); box-shadow: 0 0 20px rgba(57, 255, 20, 0.3), inset 0 0 20px rgba(57, 255, 20, 0.1); } .c-assimilate .ec-icon { color: var(--c-assimilate); }
+
+        #log { height: 80px; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 6px; padding: 10px; font-size: 12px; color: #00f3ff; font-family: monospace; margin-bottom: 10px; border: 1px solid rgba(0, 243, 255, 0.1); }
+        .log-line { border-bottom: 1px solid rgba(0, 243, 255, 0.1); padding: 4px 0; }
+
+        .controls { display: flex; gap: 15px; }
+        button { flex: 1; padding: 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: #000; transition: 0.2s; font-size: 14px; letter-spacing: 1px; }
+        button:active { transform: scale(0.95); }
+        .btn-pass { background: var(--c-normal); color: #fff; } 
+        .btn-pass:hover { background: #95a5a6; box-shadow: 0 0 10px #95a5a6; }
+        
+        .btn-reset { background: var(--neon-red); color: #fff; } 
+        .btn-reset:hover { background: #ff3f34; box-shadow: 0 0 15px var(--neon-red); }
+
+        #toast { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.9); color: var(--neon-blue); padding: 12px 40px; border-radius: 4px; font-weight: bold; border: 1px solid var(--neon-blue); box-shadow: 0 0 20px var(--neon-blue); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 200; font-family: "Microsoft YaHei"; text-transform: uppercase; }
+        
+        /* 特效与浮动文字 */
+        #vfx-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; overflow: hidden; }
+        .vfx-ripple { position: absolute; border-radius: 50%; border: 2px solid var(--c-bomb); background: rgba(255, 7, 58, 0.3); transform: translate(-50%, -50%); animation: rippleExpand 0.5s ease-out forwards; box-shadow: 0 0 20px var(--c-bomb); }
+        @keyframes rippleExpand { 0% { width:0; height:0; opacity:1; } 100% { width:300px; height:300px; opacity:0; } }
+        .vfx-magic { position: absolute; width: 100%; height: 100%; border-radius: 50%; top: 0; left: 0; box-shadow: 0 0 20px var(--c-convert), inset 0 0 10px var(--c-convert); animation: magicPulse 0.5s ease-out; }
+        @keyframes magicPulse { 0% { transform:scale(1); opacity:1; } 100% { transform:scale(1.8); opacity:0; } }
+        .vfx-shield { position: absolute; border-radius: 50%; background: rgba(255, 159, 67, 0.2); border: 1px solid var(--c-shock); transform: translate(-50%, -50%); box-shadow: 0 0 15px var(--c-shock); animation: shieldBounce 0.3s; }
+        @keyframes shieldBounce { 0% { width:0; height:0; opacity:1; } 50% { width:50px; height:50px; opacity:0.5; } 100% { width:40px; height:40px; opacity:0; } }
+        .particle { position: absolute; pointer-events: none; border-radius: 50%; z-index: 30; animation: fadeOut 0.8s forwards; }
+        @keyframes fadeOut { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0); } }
+        .floating-text { position: absolute; pointer-events: none; z-index: 50; font-family: 'Microsoft YaHei', sans-serif; font-weight: bold; font-size: 24px; color: #fff; text-shadow: 0 0 5px var(--neon-blue); animation: floatUp 1s ease-out forwards; }
+        .floating-text.crit { font-size: 40px; color: var(--neon-red); text-shadow: 0 0 10px var(--neon-red), 0 0 20px #000; }
+        @keyframes floatUp { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 20% { transform: translate(-50%, -100%) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -200%) scale(1); opacity: 0; } }
+        .big-announcement { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; font-weight: 900; color: #fff; text-shadow: 0 0 20px var(--neon-pink); z-index: 100; pointer-events: none; white-space: nowrap; animation: zoomInFade 1.5s ease-out forwards; font-family: "Microsoft YaHei"; }
+        @keyframes zoomInFade { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 80% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
+        .shake-screen { animation: screenShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes screenShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} }
+
+        /* 联机大厅 */
+        #lobby-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(20px); z-index: 200; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s; }
+        .lobby-box { background: rgba(20,20,20,0.8); padding: 40px; border-radius: 16px; border: 1px solid var(--neon-blue); text-align: center; box-shadow: 0 0 50px rgba(0, 243, 255, 0.2); width: 80%; max-width: 400px; }
+        .lobby-title { font-size: 40px; font-weight: bold; margin-bottom: 40px; color: var(--neon-blue); letter-spacing: 5px; text-shadow: 0 0 20px var(--neon-blue); font-family: "Microsoft YaHei"; }
+        .lobby-btn { display: block; width: 100%; padding: 15px; margin-bottom: 15px; border: 1px solid var(--neon-blue); background: transparent; color: var(--neon-blue); font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; letter-spacing: 2px; }
+        .lobby-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
+        .room-code-display { margin-top: 20px; border-top: 1px dashed #444; padding-top: 20px; }
+        .code-big { font-size: 32px; letter-spacing: 5px; color: var(--neon-green); margin: 15px 0; font-family: monospace; border: 1px dashed var(--neon-green); padding: 10px; }
+        #input-room-area input { background: transparent; border: 1px solid #555; color: #fff; padding: 10px; width: 70%; font-size: 20px; text-align: center; letter-spacing: 3px; margin-bottom: 15px; text-transform: uppercase; }
+        #online-status { display: inline-block; margin-left: 10px; font-size: 12px; color: var(--neon-green); text-shadow: 0 0 5px var(--neon-green); display: none; }
+    </style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div id="app">
+    <div id="lobby-overlay">
+        <div class="lobby-box">
+            <div class="lobby-title">霓虹战场</div>
+            <div id="lobby-menu">
+                <button class="lobby-btn" onclick="Lobby.local()">本地对战</button>
+                <button class="lobby-btn" onclick="Lobby.create()">创建房间 (房主)</button>
+                <button class="lobby-btn" onclick="Lobby.joinUI()">加入房间 (好友)</button>
+            </div>
+            <div id="lobby-create-ui" style="display:none">
+                <div style="color:#aaa; font-size:12px;">房间已创建，口令：</div>
+                <div class="code-big" id="my-code">...</div>
+                <div style="color:#666; font-size:12px; margin-bottom:15px">等待好友加入...</div>
+                <button class="lobby-btn" onclick="Lobby.copy()">复制口令</button>
+                <button class="lobby-btn" style="border-color:#555; color:#888" onclick="Lobby.back()">返回</button>
+            </div>
+            <div id="lobby-join-ui" style="display:none">
+                <div id="input-room-area">
+                    <input type="text" id="room-input" placeholder="输入6位口令" maxlength="6">
+                    <button class="lobby-btn" onclick="Lobby.join()">连接房间</button>
+                    <button class="lobby-btn" style="border-color:#555; color:#888" onclick="Lobby.back()">返回</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="board-section">
+        <div id="board">
+            <div class="grid-layer" id="grid"></div>
+            <div id="vfx-layer"></div>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <div class="header">
+            <h2>混沌棋 <span id="online-status">● 联机中</span></h2>
+            <div id="phase-display" class="turn-badge safe">安全发育期</div>
+        </div>
+
+        <div class="scores">
+            <div class="p-card" id="p1-card">
+                <div class="p-name"><div class="dot" style="background:#000; border:1px solid var(--neon-pink)"></div> 黑方 <span id="me-b"></span></div>
+                <div class="p-score" id="score-b">0</div>
+            </div>
+            <div class="p-card" id="p2-card">
+                <div class="p-name"><div class="dot" style="background:#fff; border:1px solid var(--neon-blue)"></div> 白方 <span id="me-w"></span></div>
+                <div class="p-score" id="score-w">0</div>
+            </div>
+        </div>
+
+        <div class="decks-area">
+            <div class="deck-container" id="deck-vis-b"></div>
+            <div class="deck-container" id="deck-vis-w"></div>
+        </div>
+
+        <div class="card-stage" id="card-stage"></div>
+
+        <div id="log"></div>
+
+        <div class="controls">
+            <button class="btn-pass" onclick="Game.passTurn()">虚着</button>
+            <button class="btn-reset" onclick="location.reload()">退出</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ---------------------------------------------------------
+// 🔴 Firebase 配置
+// ---------------------------------------------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyAdLQ38j8gMeVf7A5476gdDBvgZJifVBj4",
+  authDomain: "chaosgo-demo.firebaseapp.com",
+  databaseURL: "https://chaosgo-demo-default-rtdb.firebaseio.com",
+  projectId: "chaosgo-demo",
+  storageBucket: "chaosgo-demo.firebasestorage.app",
+  messagingSenderId: "133397838586",
+  appId: "1:133397838586:web:165fdb737846c2f23c6743",
+  measurementId: "G-1P1Q8REJT4"
+};
+
+// 初始化 Firebase
+let db = null;
+try {
+    if (firebaseConfig.apiKey) {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        console.log("Firebase 已就绪");
+    }
+} catch (e) { console.error("Firebase Init Error", e); }
+
+// ---------------------------------------------------------
+// 游戏核心
+// ---------------------------------------------------------
+
+const BOARD_SIZE = 9;
+const EMPTY = 0, BLACK = 1, WHITE = 2;
+
+const SFX = {
+    ctx: null,
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+    play(type) {
+        if (!this.ctx) this.init();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        switch (type) {
+            case 'stone': osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(100, t+0.08); gain.gain.setValueAtTime(0.4, t); gain.gain.exponentialRampToValueAtTime(0.01, t+0.08); osc.start(t); osc.stop(t+0.1); break;
+            case 'bomb': osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, t); osc.frequency.exponentialRampToValueAtTime(10, t+0.5); gain.gain.setValueAtTime(0.6, t); gain.gain.linearRampToValueAtTime(0, t+0.5); osc.start(t); osc.stop(t+0.5); break;
+            case 'magic': osc.type = 'sine'; osc.frequency.setValueAtTime(400, t); osc.frequency.linearRampToValueAtTime(1200, t+0.3); gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t+0.3); osc.start(t); osc.stop(t+0.3); break;
+            case 'card': osc.type = 'triangle'; osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(600, t+0.15); gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t+0.15); osc.start(t); osc.stop(t+0.15); break;
+            case 'error': osc.type = 'square'; osc.frequency.setValueAtTime(150, t); gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t+0.15); osc.start(t); osc.stop(t+0.15); break;
+        }
+    }
+};
+
+// 增强版 Juice (特效)
+const Juice = {
+    spawnParticles(x, y, color, count = 12) {
+        const layer = document.getElementById('vfx-layer');
+        const cellSize = 540 / 9;
+        const centerX = x * cellSize + cellSize/2;
+        const centerY = y * cellSize + cellSize/2;
+        for (let i = 0; i < count; i++) {
+            const p = document.createElement('div'); p.className = 'particle';
+            const size = Math.random() * 6 + 2;
+            p.style.width = size + 'px'; p.style.height = size + 'px'; p.style.backgroundColor = color;
+            p.style.left = centerX + 'px'; p.style.top = centerY + 'px';
+            const angle = Math.random() * 6.28; const velocity = Math.random() * 60 + 20;
+            const tx = Math.cos(angle) * velocity; const ty = Math.sin(angle) * velocity;
+            p.animate([{ transform: `translate(0, 0)` }, { transform: `translate(${tx}px, ${ty}px)` }], { duration: 600, easing: 'ease-out' });
+            layer.appendChild(p); setTimeout(() => p.remove(), 600);
+        }
+    },
+    showFloatingText(x, y, text, isCrit = false) {
+        const layer = document.getElementById('vfx-layer');
+        const cellSize = 540 / 9;
+        const el = document.createElement('div');
+        el.className = isCrit ? 'floating-text crit' : 'floating-text';
+        el.innerText = text;
+        el.style.left = (x * cellSize + cellSize/2) + 'px';
+        el.style.top = (y * cellSize) + 'px';
+        layer.appendChild(el); setTimeout(() => el.remove(), 1000);
+    },
+    announce(text) {
+        const app = document.getElementById('app');
+        const el = document.createElement('div'); el.className = 'big-announcement';
+        el.innerText = text;
+        app.appendChild(el); setTimeout(() => el.remove(), 1500);
+    }
+};
+
+const VFX = {
+    spawnRipple(x, y) {
+        const layer = document.getElementById('vfx-layer');
+        const div = document.createElement('div'); div.className = 'vfx-ripple';
+        div.style.left = (x * 60 + 30) + 'px'; div.style.top = (y * 60 + 30) + 'px';
+        layer.appendChild(div); setTimeout(() => div.remove(), 500);
+    },
+    spawnShield(x, y) {
+        const layer = document.getElementById('vfx-layer');
+        const div = document.createElement('div'); div.className = 'vfx-shield';
+        div.style.left = (x * 60 + 30) + 'px'; div.style.top = (y * 60 + 30) + 'px';
+        layer.appendChild(div); setTimeout(() => div.remove(), 300);
+    },
+    shakeScreen() {
+        const app = document.getElementById('app'); app.classList.remove('shake-screen');
+        void app.offsetWidth; app.classList.add('shake-screen');
+    },
+    addMagicGlow(stoneElement) {
+        const glow = document.createElement('div'); glow.className = 'vfx-magic';
+        stoneElement.appendChild(glow); setTimeout(() => glow.remove(), 500);
+    }
+};
+
+const EVENTS = {
+    NORMAL:     { id: 'normal',     name: '风平浪静', icon: '🌊', color: '',               desc: '无事发生，正常落子。' },
+    SHOCK:      { id: 'shock',      name: '气流震荡', icon: '🌪️', color: 'c-shock',        desc: '排斥：禁止贴身落子。' },
+    BOMB:       { id: 'bomb',       name: '大爆炸',   icon: '💣', color: 'c-bomb',         desc: '毁灭：炸毁周围棋子。' },
+    CONVERT:    { id: 'convert',    name: '策反',     icon: '🔮', color: 'c-convert',      desc: '控制：点击对方棋子策反。' },
+    SPEED:      { id: 'speed',      name: '极速行动', icon: '⚡', color: 'c-speed',        desc: '加速：本回合连下两手。' },
+    ASSIMILATE: { id: 'assimilate', name: '同化',     icon: '🧬', color: 'c-assimilate',   desc: '感染：落子同化周围敌子。' }
+};
+
+// 联机管理器
+const Lobby = {
+    isOnline: false,
+    myRole: 0, // 1=Black, 2=White
+    roomId: null,
+
+    local() {
+        document.getElementById('lobby-overlay').style.opacity = 0;
+        setTimeout(() => document.getElementById('lobby-overlay').style.display='none', 500);
+        Game.init();
+    },
+    create() {
+        if(!db) return alert("请先配置 Firebase！");
+        const id = Math.random().toString(36).substr(2, 6).toUpperCase();
+        this.roomId = id;
+        this.myRole = BLACK;
+        this.isOnline = true;
+        
+        document.getElementById('lobby-menu').style.display='none';
+        document.getElementById('lobby-create-ui').style.display='block';
+        document.getElementById('my-code').innerText = id;
+
+        // 初始化房间
+        Game.init();
+        this.syncState(Game.exportState());
+        
+        // 监听对方操作
+        db.ref('rooms/'+id).on('value', (snap) => {
+            const val = snap.val();
+            if(val) Game.importState(val);
+        });
+    },
+    joinUI() {
+        document.getElementById('lobby-menu').style.display='none';
+        document.getElementById('lobby-join-ui').style.display='block';
+    },
+    join() {
+        if(!db) return alert("请先配置 Firebase！");
+        const code = document.getElementById('room-input').value.toUpperCase();
+        if(code.length !== 6) return alert("请输入6位口令");
+        
+        this.roomId = code;
+        this.myRole = WHITE;
+        this.isOnline = true;
+
+        db.ref('rooms/'+code).once('value', (snap) => {
+            if(!snap.exists()) { alert("房间不存在"); location.reload(); return; }
+            
+            document.getElementById('lobby-overlay').style.opacity = 0;
+            setTimeout(() => document.getElementById('lobby-overlay').style.display='none', 500);
+            
+            document.getElementById('online-status').style.display = 'inline-block';
+            document.getElementById('me-w').innerText = '(我)';
+            
+            // 监听
+            db.ref('rooms/'+code).on('value', (s) => {
+                if(s.val()) Game.importState(s.val());
+            });
+        });
+    },
+    copy() {
+        navigator.clipboard.writeText(this.roomId);
+        alert("口令已复制");
+        // 房主直接进入游戏等待
+        document.getElementById('lobby-overlay').style.opacity = 0;
+        setTimeout(() => document.getElementById('lobby-overlay').style.display='none', 500);
+        document.getElementById('online-status').style.display = 'inline-block';
+        document.getElementById('me-b').innerText = '(我)';
+    },
+    back() {
+        document.getElementById('lobby-menu').style.display='block';
+        document.getElementById('lobby-create-ui').style.display='none';
+        document.getElementById('lobby-join-ui').style.display='none';
+    },
+    syncState(state) {
+        if(this.isOnline && this.roomId) {
+            db.ref('rooms/'+this.roomId).set(state);
+        }
+    }
+};
+
+const Game = {
+    board: [], prevBoardHash: "", turn: BLACK, turnCount: 0, safeLimit: 0,
+    decks: { [BLACK]: [], [WHITE]: [] }, captures: { [BLACK]: 0, [WHITE]: 0 },
+    frozen: { [BLACK]: false, [WHITE]: false },
+    currentEvent: null, extraMoves: 0, passCount: 0, gameOver: false, lastMove: null,
+
+    init() {
+        this.board = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(EMPTY));
+        this.prevBoardHash = "";
+        this.turn = BLACK; this.turnCount = 0;
+        this.safeLimit = Math.floor(Math.random() * 5) + 6; 
+        this.captures = { [BLACK]: 0, [WHITE]: 0 };
+        this.frozen = { [BLACK]: false, [WHITE]: false };
+        this.passCount = 0; this.gameOver = false; this.lastMove = null;
+
+        const baseDeck = [EVENTS.SHOCK, EVENTS.BOMB, EVENTS.CONVERT, EVENTS.SPEED, EVENTS.ASSIMILATE, EVENTS.BOMB];
+        this.decks[BLACK] = this.shuffle([...baseDeck]);
+        this.decks[WHITE] = this.shuffle([...baseDeck]);
+
+        UI.initGrid();
+        this.startTurn();
+    },
+
+    shuffle(arr) { return arr.sort(() => Math.random() - 0.5); },
+
+    // 序列化状态
+    exportState() {
+        return {
+            board: this.board,
+            turn: this.turn,
+            turnCount: this.turnCount,
+            captures: this.captures,
+            frozen: this.frozen,
+            eventId: this.currentEvent ? this.currentEvent.id : 'normal',
+            extraMoves: this.extraMoves,
+            lastMove: this.lastMove,
+            safeLimit: this.safeLimit,
+            prevBoardHash: this.prevBoardHash,
+            passCount: this.passCount,
+            gameOver: this.gameOver
+        };
+    },
+    
+    // 反序列化状态 (接收网络数据)
+    importState(state) {
+        // 只有当 turn 改变，或者有新的操作时才刷新
+        if (state.turnCount === this.turnCount && state.turn === this.turn && JSON.stringify(state.board) === JSON.stringify(this.board)) return;
+
+        this.board = state.board || this.board;
+        this.turn = (state.turn !== undefined) ? state.turn : this.turn;
+        this.turnCount = (state.turnCount !== undefined) ? state.turnCount : this.turnCount;
+        this.captures = state.captures || {1:0, 2:0};
+        this.frozen = state.frozen || {1:false, 2:false};
+        this.extraMoves = state.extraMoves || 0;
+        this.lastMove = state.lastMove || null;
+        this.safeLimit = (state.safeLimit !== undefined) ? state.safeLimit : this.safeLimit;
+        this.prevBoardHash = state.prevBoardHash || "";
+        this.passCount = state.passCount || 0;
+        this.gameOver = !!state.gameOver;
+        
+        // 恢复事件
+        this.currentEvent = EVENTS.NORMAL;
+        Object.values(EVENTS).forEach(e => { if(e.id === state.eventId) this.currentEvent = e; });
+        
+        UI.renderBoard();
+        UI.updateStatus();
+        UI.renderCard(this.currentEvent);
+        
+        // 如果是我的回合，提示
+        if(Lobby.isOnline && this.turn === Lobby.myRole && !this.gameOver) {
+            UI.toast("轮到你了！");
+        }
+    },
+
+    startTurn() {
+        if (this.gameOver) return;
+
+        // 联机：如果不是我的回合，不执行逻辑，只等待同步
+        if (Lobby.isOnline && Lobby.myRole !== this.turn) return;
+
+        if (this.frozen[this.turn]) {
+            this.frozen[this.turn] = false;
+            this.switchTurn();
+            return;
+        }
+
+        // 抽卡
+        let deck = this.decks[this.turn];
+        if (this.turnCount < this.safeLimit) {
+            this.currentEvent = EVENTS.NORMAL;
+        } else {
+            if (deck.length > 0 && Math.random() < 0.35) {
+                this.currentEvent = deck.pop();
+                SFX.play('card');
+            } else {
+                this.currentEvent = EVENTS.NORMAL;
+            }
+        }
+
+        this.extraMoves = 0;
+        UI.updateStatus();
+        UI.renderCard(this.currentEvent);
+        
+        // 同步初始状态
+        Lobby.syncState(this.exportState());
+
+        if (this.currentEvent.id === 'speed') {
+            this.extraMoves = 1;
+            document.getElementById('board').classList.add('speed-mode');
+            UI.toast("极速行动：连下两手！");
+        } else {
+            document.getElementById('board').classList.remove('speed-mode');
+        }
+        if (this.currentEvent.id === 'convert') UI.toast("请点击敌方棋子策反");
+    },
+
+    handleClick(x, y) {
+        // 联机锁
+        if (Lobby.isOnline && Lobby.myRole !== this.turn) return UI.toast("等待对方行动");
+        if (this.gameOver) return;
+        
+        const evt = this.currentEvent;
+
+        // 策反逻辑
+        if (evt.id === 'convert') {
+            const opp = this.turn === BLACK ? WHITE : BLACK;
+            if (this.board[y][x] !== opp) {
+                SFX.play('error'); VFX.spawnShield(x, y);
+                return UI.toast("只能策反敌方棋子");
+            }
+            this.board[y][x] = this.turn;
+            SFX.play('magic'); UI.flipStone(x, y);
+            Juice.spawnParticles(x, y, '#bc13fe', 15);
+            this.resolveCaptures(this.turn);
+            this.endAction();
+            return;
+        }
+
+        if (this.board[y][x] !== EMPTY) return SFX.play('error');
+
+        // 气流震荡
+        if (evt.id === 'shock') {
+            const opp = this.turn === BLACK ? WHITE : BLACK;
+            const adj = [[0,1],[0,-1],[1,0],[-1,0]];
+            for (let d of adj) {
+                let nx = x+d[0], ny = y+d[1];
+                if (this.onBoard(nx,ny) && this.board[ny][nx] === opp) {
+                    SFX.play('error'); VFX.spawnShield(x, y);
+                    return UI.toast("气流震荡：禁止贴身");
+                }
+            }
+        }
+
+        // 规则检查
+        let tempBoard = JSON.parse(JSON.stringify(this.board));
+        tempBoard[y][x] = this.turn;
+        if (evt.id !== 'bomb' && evt.id !== 'assimilate') {
+            if (JSON.stringify(tempBoard) === this.prevBoardHash) {
+                SFX.play('error'); return UI.toast("打劫：禁止全局同形");
+            }
+            const opp = this.turn === BLACK ? WHITE : BLACK;
+            if (Logic.findDead(opp, tempBoard).length === 0 && Logic.countLib(x, y, tempBoard, this.turn) === 0) {
+                SFX.play('error'); return UI.toast("禁入点：落子无气");
+            }
+        }
+
+        // 落子
+        this.board[y][x] = this.turn;
+        this.lastMove = {x, y};
+        this.passCount = 0;
+        SFX.play('stone');
+        Juice.spawnParticles(x, y, this.turn === BLACK ? '#555' : '#fff', 8);
+        UI.renderBoard();
+
+        // 技能触发
+        if (evt.id === 'bomb') this.triggerBomb(x, y);
+        else if (evt.id === 'assimilate') this.triggerAssimilate(x, y);
+
+        this.resolveCaptures(this.turn);
+        this.prevBoardHash = JSON.stringify(this.board);
+
+        if (evt.id === 'speed') {
+            if (this.extraMoves > 0) {
+                this.extraMoves--;
+                Lobby.syncState(this.exportState()); // 更新中间状态
+                return;
+            } else {
+                this.frozen[this.turn] = true;
+                document.getElementById('board').classList.remove('speed-mode');
+            }
+        }
+        this.endAction();
+    },
+
+    triggerBomb(x, y) {
+        VFX.spawnRipple(x, y); VFX.shakeScreen(); SFX.play('bomb');
+        Juice.spawnParticles(x, y, '#ff073a', 30);
+        [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dy]) => {
+            let nx=x+dx, ny=y+dy;
+            if (this.onBoard(nx,ny) && this.board[ny][nx] !== EMPTY) {
+                this.board[ny][nx] = EMPTY;
+                Juice.spawnParticles(nx, ny, '#ff073a', 10);
+            }
+        });
+        UI.renderBoard();
+    },
+
+    triggerAssimilate(x, y) {
+        const opp = this.turn === BLACK ? WHITE : BLACK;
+        let hit = false;
+        [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dy]) => {
+            let nx=x+dx, ny=y+dy;
+            if (this.onBoard(nx,ny) && this.board[ny][nx] === opp) {
+                this.board[ny][nx] = this.turn; UI.flipStone(nx, ny); hit = true;
+                Juice.spawnParticles(nx, ny, '#39ff14', 8);
+            }
+        });
+        if(hit) SFX.play('magic');
+    },
+
+    resolveCaptures(player) {
+        const opp = player === BLACK ? WHITE : BLACK;
+        const dead = Logic.findDead(opp, this.board);
+        let count = 0;
+        dead.forEach(g => g.forEach(s => { 
+            this.board[s.y][s.x] = EMPTY; count++; 
+            Juice.spawnParticles(s.x, s.y, player===BLACK?'#fff':'#000', 12);
+        }));
+        if (count > 0) {
+            this.captures[player] += count;
+            UI.updateStatus(); UI.renderBoard();
+            if (this.lastMove) Juice.showFloatingText(this.lastMove.x, this.lastMove.y, `+${count}`, count>=3);
+            if(count >= 5) { Juice.announce("主宰战场!!"); SFX.play('bomb'); }
+            else if(count >= 3) Juice.announce("大杀特杀!");
+        }
+        return count;
+    },
+
+    endAction() { this.switchTurn(); },
+    switchTurn() {
+        this.turnCount++;
+        this.turn = this.turn === BLACK ? WHITE : BLACK;
+        Lobby.syncState(this.exportState()); // 发送状态
+        setTimeout(() => this.startTurn(), 300);
+    },
+    passTurn() {
+        if (Lobby.isOnline && Lobby.myRole !== this.turn) return;
+        UI.log(`[${this.pName()}] 虚着`);
+        this.passCount++;
+        if (this.passCount >= 2) { this.gameOver = true; UI.toast("游戏结束"); return; }
+        this.prevBoardHash = JSON.stringify(this.board);
+        this.switchTurn();
+    },
+    pName() { return this.turn === BLACK ? '黑方' : '白方'; },
+    onBoard(x, y) { return x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE; },
+    coord(x, y) { return "ABCDEFGHJ"[x] + (9-y); }
+};
+
+const Logic = {
+    findDead(color, board) {
+        let dead = [], visited = new Set();
+        for(let y=0; y<BOARD_SIZE; y++) for(let x=0; x<BOARD_SIZE; x++) {
+            if(board[y][x] === color && !visited.has(`${x},${y}`)) {
+                const g = this.getGroup(x, y, board, color);
+                g.forEach(s => visited.add(`${s.x},${s.y}`));
+                if(this.countGroupLib(g, board) === 0) dead.push(g);
+            }
+        }
+        return dead;
+    },
+    getGroup(x, y, board, color) {
+        let g = [], s = [{x,y}], v = new Set([`${x},${y}`]);
+        while(s.length) {
+            let c = s.pop(); g.push(c);
+            [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx, dy]) => {
+                let nx=c.x+dx, ny=c.y+dy;
+                if(Game.onBoard(nx,ny) && board[ny][nx]===color && !v.has(`${nx},${ny}`)) {
+                    v.add(`${nx},${ny}`); s.push({x:nx, y:ny});
+                }
+            });
+        }
+        return g;
+    },
+    countGroupLib(g, board) {
+        let libs = new Set();
+        g.forEach(s => [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx, dy]) => {
+            let nx=s.x+dx, ny=s.y+dy;
+            if(Game.onBoard(nx,ny) && board[ny][nx]===EMPTY) libs.add(`${nx},${ny}`);
+        }));
+        return libs.size;
+    },
+    countLib(x, y, board, color) { return this.countGroupLib(this.getGroup(x, y, board, color), board); }
+};
+
+const UI = {
+    initGrid() {
+        const g = document.getElementById('grid'); g.innerHTML = '';
+        for(let y=0; y<BOARD_SIZE; y++) for(let x=0; x<BOARD_SIZE; x++) {
+            let d = document.createElement('div'); d.className = 'intersect';
+            if(x===0)d.classList.add('l-edge'); if(x===8)d.classList.add('r-edge');
+            if(y===0)d.classList.add('t-edge'); if(y===8)d.classList.add('b-edge');
+            if((x===2||x===6||x===4)&&(y===2||y===6||y===4)&&!((x===4&&y!==4)||(y===4&&x!==4))) {
+                let s = document.createElement('div'); s.className='star-dot'; d.appendChild(s);
+            }
+            d.onclick = () => Game.handleClick(x, y);
+            g.appendChild(d);
+        }
+    },
+    renderBoard() {
+        const cells = document.querySelectorAll('.intersect');
+        for(let y=0; y<BOARD_SIZE; y++) for(let x=0; x<BOARD_SIZE; x++) {
+            const cell = cells[y*9+x];
+            const val = Game.board[y][x];
+            let old = cell.querySelector('.stone'); 
+            if(old && !old.classList.contains('flipping')) old.remove();
+            else if(old && old.classList.contains('flipping') && val === EMPTY) old.remove();
+
+            if(val !== EMPTY && !cell.querySelector('.stone')) {
+                const s = document.createElement('div');
+                s.className = `stone ${val===BLACK?'black':'white'}`;
+                if(Game.lastMove && Game.lastMove.x===x && Game.lastMove.y===y) s.classList.add('last');
+                cell.appendChild(s);
+            }
+        }
+    },
+    flipStone(x, y) {
+        const cell = document.querySelectorAll('.intersect')[y*9+x];
+        let s = cell.querySelector('.stone');
+        if(s) {
+            s.className = `stone ${Game.board[y][x]===BLACK?'black':'white'} flipping`;
+            VFX.addMagicGlow(s);
+        }
+    },
+    renderCard(evt) {
+        const stage = document.getElementById('card-stage');
+        const flash = evt.id !== 'normal' ? '<div class="card-flash"></div>' : '';
+        stage.innerHTML = `<div class="event-card ${evt.color}">${flash}<div class="ec-icon">${evt.icon}</div><div class="ec-title">${evt.name}</div><div class="ec-desc">${evt.desc}</div></div>`;
+    },
+    renderDeck(id, count) {
+        const el = document.getElementById(id); el.innerHTML = '';
+        const vis = Math.min(count, 5);
+        for(let i=0; i<vis; i++) {
+            let c = document.createElement('div'); c.className = 'card-back';
+            c.style.bottom = (i*5)+'px'; c.style.zIndex = i; el.appendChild(c);
+        }
+        if(count>0){ let t=document.createElement('div'); t.className='deck-count'; t.innerText=`余${count}`; el.appendChild(t); }
+        else { let t=document.createElement('div'); t.className='deck-count'; t.innerText='空'; el.appendChild(t); }
+    },
+    updateStatus() {
+        const isB = Game.turn === BLACK;
+        document.getElementById('p1-card').className = `p-card ${isB?'active':''}`;
+        document.getElementById('p2-card').className = `p-card ${!isB?'active':''}`;
+        document.getElementById('score-b').innerText = Game.captures[BLACK];
+        document.getElementById('score-w').innerText = Game.captures[WHITE];
+        
+        const ph = document.getElementById('phase-display');
+        if (Game.turnCount < Game.safeLimit) { ph.innerText = `安全期 (${Game.safeLimit - Game.turnCount})`; ph.className = 'turn-badge safe'; }
+        else { ph.innerText = '混沌期'; ph.className = 'turn-badge'; }
+
+        this.renderDeck('deck-vis-b', Game.decks[BLACK].length);
+        this.renderDeck('deck-vis-w', Game.decks[WHITE].length);
+    },
+    log(msg) { const d = document.createElement('div'); d.className = 'log-line'; d.innerText = msg; document.getElementById('log').prepend(d); },
+    toast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 2000); }
+};
+
+// 只有在非联机模式下才自动启动，联机模式等待创建房间
+if(!Lobby.isOnline) Game.init();
+
+</script>
+</body>
+</html>
