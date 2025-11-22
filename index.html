@@ -12,7 +12,7 @@
         /* --- 赛博朋克/霓虹配色方案 --- */
         :root {
             --bg-color: #050510;
-            --panel-bg: rgba(20, 25, 40, 0.75);
+            --panel-bg: rgba(20, 25, 40, 0.85);
             --board-bg: rgba(0, 0, 0, 0.6);
             --line-color: rgba(0, 243, 255, 0.3);
             --line-glow: #00f3ff;
@@ -33,7 +33,7 @@
             overflow: hidden; position: relative; 
         }
         
-        /* 💻 电脑端布局适配 (宽度大于 800px 时横排) */
+        /* 💻 电脑端布局适配 */
         @media (min-width: 800px) {
             #app {
                 flex-direction: row;
@@ -43,7 +43,6 @@
             }
         }
         
-        /* 棋盘容器：手机上占更多空间 */
         #board-section { 
             flex: 1; 
             background: transparent; 
@@ -57,7 +56,7 @@
             width: 95vw; /* 手机宽度占 95% */
             max-width: 540px; /* 电脑最大 540px */
             aspect-ratio: 1 / 1; /* 强制保持正方形 */
-            height: auto; /* 高度自动 */
+            height: auto; 
             background-color: var(--board-bg); position: relative; border-radius: 12px; padding: 5px; 
             border: 1px solid rgba(0, 243, 255, 0.2); box-shadow: 0 0 30px rgba(0, 243, 255, 0.05); 
             transition: box-shadow 0.3s, border-color 0.3s; 
@@ -80,9 +79,9 @@
         .stone.flipping { animation: flipAnim 0.4s cubic-bezier(0.455, 0.03, 0.515, 0.955); }
         @keyframes flipAnim { 0% { transform: translate(-50%,-50%) scale(1); filter: brightness(1); } 50% { transform: translate(-50%,-50%) scale(0.1, 1); filter: brightness(2) hue-rotate(180deg); } 100% { transform: translate(-50%,-50%) scale(1); filter: brightness(1); } }
 
-        /* 📱 侧边栏/控制区适配 */
+        /* 📱 侧边栏适配 */
         #sidebar { 
-            flex: 0 0 auto; /* 不伸缩 */
+            flex: 0 0 auto; 
             padding: 15px; 
             display: flex; flex-direction: column; 
             background: rgba(0,0,0,0.2); 
@@ -95,6 +94,8 @@
 
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
         h2 { margin: 0; font-size: 18px; color: var(--neon-blue); letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); font-family: "Microsoft YaHei"; }
+        @media (min-width: 800px) { h2 { font-size: 24px; letter-spacing: 3px; } }
+
         .turn-badge { font-size: 12px; padding: 4px 10px; border-radius: 4px; background: rgba(0,0,0,0.5); color: #aaa; border: 1px solid #444; font-family: "Microsoft YaHei"; }
         .turn-badge.safe { color: var(--neon-green); border-color: var(--neon-green); background: rgba(57, 255, 20, 0.1); box-shadow: 0 0 10px rgba(57, 255, 20, 0.2); }
 
@@ -103,28 +104,33 @@
         .p-card.active { border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.1); box-shadow: 0 0 15px rgba(0, 243, 255, 0.2); }
         .p-name { font-size: 12px; color: #ccc; margin-bottom: 2px; display: flex; align-items: center; gap: 5px; letter-spacing: 1px;}
         .p-score { font-size: 18px; font-weight: bold; color: #fff; font-family: monospace; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 5px currentColor;}
+        .dot { width: 6px; height: 6px; border-radius: 50%; box-shadow: 0 0 5px currentColor;}
 
-        .decks-area { display: none; } /* 手机屏太小，隐藏牌堆背面，只显示当前卡 */
+        /* 牌堆区域 - 手机隐藏，电脑显示 */
+        .decks-area { display: none; }
         @media (min-width: 800px) { .decks-area { display: flex; justify-content: space-between; margin-bottom: 20px; height: 70px; } }
         
-        .deck-container { width: 45%; position: relative; display: flex; align-items: flex-end; justify-content: center; }
-        .card-back { position: absolute; width: 50px; height: 70px; background: linear-gradient(135deg, #2d3436 0%, #000 100%); border: 1px solid #555; border-radius: 6px; box-shadow: 0 -4px 10px rgba(0,0,0,0.8); }
-        .deck-count { position: absolute; bottom: -20px; font-size: 10px; color: #666; width: 100%; text-align: center; font-family: monospace; }
+        .deck-container { width: 40%; position: relative; display: flex; align-items: flex-end; justify-content: center; height: 100%; }
+        .card-back { position: absolute; width: 35px; height: 50px; background: linear-gradient(135deg, #2d3436 0%, #000 100%); border: 1px solid #555; border-radius: 4px; box-shadow: 0 -2px 5px rgba(0,0,0,0.8); }
+        @media (min-width: 800px) { .card-back { width: 50px; height: 70px; border-radius: 6px; } }
+        .card-back::after { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width: 15px; height: 15px; border: 2px solid #444; border-radius: 50%; }
+        .deck-count { position: absolute; bottom: -15px; font-size: 10px; color: #666; width: 100%; text-align: center; font-family: monospace; }
 
-        /* 卡牌展示优化 */
+        /* 卡牌展示区 */
         .card-stage { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; perspective: 1000px; margin-bottom: 5px; min-height: 100px; }
         .event-card { 
-            width: 100%; max-width: 300px; height: 100px; /* 手机变横条 */
+            /* 手机横条 */
+            width: 100%; height: 90%; max-height: 100px; 
             background: rgba(10, 10, 10, 0.9); backdrop-filter: blur(10px); 
-            border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); 
-            padding: 10px; text-align: left; box-shadow: 0 5px 20px rgba(0,0,0,0.8); 
-            display: flex; flex-direction: row; align-items: center; gap: 15px;
-            transform-style: preserve-3d; animation: cardPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); 
+            border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); 
+            padding: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.8); 
+            display: flex; flex-direction: row; align-items: center; gap: 15px; 
+            text-align: left; transform-style: preserve-3d; 
+            animation: cardPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); 
             position: relative; overflow: hidden; 
         }
         @media (min-width: 800px) {
-            .event-card { width: 240px; height: 320px; flex-direction: column; text-align: center; gap: 0; padding: 25px;}
+            .event-card { width: 240px; height: 320px; max-height: none; flex-direction: column; text-align: center; gap: 0; padding: 25px; border-radius: 16px; }
         }
 
         .event-card::before { content:''; position: absolute; top:0; left:0; width:100%; height:100%; background: linear-gradient(to bottom, transparent 50%, rgba(255,255,255,0.05) 50%); background-size: 100% 4px; pointer-events: none; }
@@ -132,16 +138,14 @@
         .card-flash { position: absolute; top:0; left:0; width:100%; height:100%; background: white; opacity: 0; pointer-events: none; z-index: 100; animation: flashAnim 0.3s; }
         @keyframes flashAnim { 0% { opacity: 0.8; } 100% { opacity: 0; } }
 
-        .ec-icon { font-size: 40px; filter: drop-shadow(0 0 10px currentColor); flex-shrink: 0; }
+        .ec-icon { font-size: 40px; margin: 0; filter: drop-shadow(0 0 10px currentColor); flex-shrink: 0; }
         @media (min-width: 800px) { .ec-icon { font-size: 60px; margin: 20px 0; } }
         
-        .ec-content { display: flex; flex-direction: column; flex: 1; }
-        
-        .ec-title { font-size: 18px; font-weight: bold; color: #fff; letter-spacing: 1px; text-transform: uppercase; }
+        .ec-content { display: flex; flex-direction: column; flex: 1; justify-content: center; }
+        .ec-title { font-size: 16px; font-weight: bold; color: #fff; margin-bottom: 2px; letter-spacing: 1px; text-transform: uppercase; }
         @media (min-width: 800px) { .ec-title { font-size: 22px; margin-bottom: 10px; letter-spacing: 2px; } }
-        
-        .ec-desc { font-size: 12px; color: #ccc; line-height: 1.4; }
-        @media (min-width: 800px) { .ec-desc { font-size: 13px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; margin-top: auto; } }
+        .ec-desc { font-size: 11px; color: #ccc; line-height: 1.2; }
+        @media (min-width: 800px) { .ec-desc { font-size: 13px; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; margin-top: auto; } }
 
         .c-shock { border-color: var(--c-shock); box-shadow: 0 0 20px rgba(255, 159, 67, 0.3), inset 0 0 20px rgba(255, 159, 67, 0.1); } .c-shock .ec-icon { color: var(--c-shock); }
         .c-bomb { border-color: var(--c-bomb); box-shadow: 0 0 20px rgba(255, 7, 58, 0.3), inset 0 0 20px rgba(255, 7, 58, 0.1); } .c-bomb .ec-icon { color: var(--c-bomb); }
@@ -149,10 +153,11 @@
         .c-speed { border-color: var(--c-speed); box-shadow: 0 0 20px rgba(0, 243, 255, 0.3), inset 0 0 20px rgba(0, 243, 255, 0.1); } .c-speed .ec-icon { color: var(--c-speed); }
         .c-assimilate { border-color: var(--c-assimilate); box-shadow: 0 0 20px rgba(57, 255, 20, 0.3), inset 0 0 20px rgba(57, 255, 20, 0.1); } .c-assimilate .ec-icon { color: var(--c-assimilate); }
 
-        #log { height: 60px; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 6px; padding: 5px; font-size: 10px; color: #00f3ff; font-family: monospace; margin-bottom: 10px; border: 1px solid rgba(0, 243, 255, 0.1); }
-        .log-line { border-bottom: 1px solid rgba(0, 243, 255, 0.1); padding: 2px 0; }
+        #log { display: none; } /* 手机隐藏日志 */
+        @media (min-width: 800px) { #log { display: block; height: 80px; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 6px; padding: 10px; font-size: 12px; color: #00f3ff; font-family: monospace; margin-bottom: 10px; border: 1px solid rgba(0, 243, 255, 0.1); } }
+        .log-line { border-bottom: 1px solid rgba(0, 243, 255, 0.1); padding: 4px 0; }
 
-        .controls { display: flex; gap: 10px; }
+        .controls { display: flex; gap: 10px; flex-shrink: 0; margin-top: auto; }
         button { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: #000; transition: 0.2s; font-size: 12px; letter-spacing: 1px; }
         @media (min-width: 800px) { button { padding: 15px; font-size: 14px; } }
         
@@ -167,7 +172,18 @@
 
         #toast { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.9); color: var(--neon-blue); padding: 12px 40px; border-radius: 4px; font-weight: bold; border: 1px solid var(--neon-blue); box-shadow: 0 0 20px var(--neon-blue); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 200; font-family: "Microsoft YaHei"; text-transform: uppercase; width: 80%; text-align: center; }
         
-        /* 特效与浮动文字 */
+        /* 联机大厅 */
+        #lobby-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(20px); z-index: 200; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s; }
+        .lobby-box { background: rgba(20,20,20,0.8); padding: 30px; border-radius: 16px; border: 1px solid var(--neon-blue); text-align: center; box-shadow: 0 0 50px rgba(0, 243, 255, 0.2); width: 85%; max-width: 400px; }
+        .lobby-title { font-size: 32px; font-weight: bold; margin-bottom: 30px; color: var(--neon-blue); letter-spacing: 5px; text-shadow: 0 0 20px var(--neon-blue); font-family: "Microsoft YaHei"; }
+        .lobby-btn { display: block; width: 100%; padding: 15px; margin-bottom: 15px; border: 1px solid var(--neon-blue); background: transparent; color: var(--neon-blue); font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; letter-spacing: 2px; }
+        .lobby-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
+        .room-code-display { margin-top: 20px; border-top: 1px dashed #444; padding-top: 20px; }
+        .code-big { font-size: 32px; letter-spacing: 5px; color: var(--neon-green); margin: 15px 0; font-family: monospace; border: 1px dashed var(--neon-green); padding: 10px; }
+        #input-room-area input { background: transparent; border: 1px solid #555; color: #fff; padding: 10px; width: 70%; font-size: 20px; text-align: center; letter-spacing: 3px; margin-bottom: 15px; text-transform: uppercase; }
+        #online-status { display: inline-block; margin-left: 10px; font-size: 12px; color: var(--neon-green); text-shadow: 0 0 5px var(--neon-green); display: none; }
+
+        /* 特效层 */
         #vfx-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; overflow: hidden; }
         .vfx-ripple { position: absolute; border-radius: 50%; border: 2px solid var(--c-bomb); background: rgba(255, 7, 58, 0.3); transform: translate(-50%, -50%); animation: rippleExpand 0.5s ease-out forwards; box-shadow: 0 0 20px var(--c-bomb); }
         @keyframes rippleExpand { 0% { width:0; height:0; opacity:1; } 100% { width:300px; height:300px; opacity:0; } }
@@ -180,21 +196,10 @@
         .floating-text { position: absolute; pointer-events: none; z-index: 50; font-family: 'Microsoft YaHei', sans-serif; font-weight: bold; font-size: 24px; color: #fff; text-shadow: 0 0 5px var(--neon-blue); animation: floatUp 1s ease-out forwards; }
         .floating-text.crit { font-size: 40px; color: var(--neon-red); text-shadow: 0 0 10px var(--neon-red), 0 0 20px #000; }
         @keyframes floatUp { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 20% { transform: translate(-50%, -100%) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -200%) scale(1); opacity: 0; } }
-        .big-announcement { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; font-weight: 900; color: #fff; text-shadow: 0 0 20px var(--neon-pink); z-index: 100; pointer-events: none; white-space: nowrap; animation: zoomInFade 1.5s ease-out forwards; font-family: "Microsoft YaHei"; }
+        .big-announcement { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; font-weight: 900; color: #fff; text-shadow: 0 0 20px var(--neon-pink); z-index: 100; pointer-events: none; white-space: nowrap; animation: zoomInFade 1.5s ease-out forwards; font-family: "Microsoft YaHei"; }
         @keyframes zoomInFade { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 80% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
         .shake-screen { animation: screenShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes screenShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} }
-
-        /* 联机大厅 */
-        #lobby-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(20px); z-index: 200; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s; }
-        .lobby-box { background: rgba(20,20,20,0.8); padding: 30px; border-radius: 16px; border: 1px solid var(--neon-blue); text-align: center; box-shadow: 0 0 50px rgba(0, 243, 255, 0.2); width: 85%; max-width: 400px; }
-        .lobby-title { font-size: 32px; font-weight: bold; margin-bottom: 30px; color: var(--neon-blue); letter-spacing: 5px; text-shadow: 0 0 20px var(--neon-blue); font-family: "Microsoft YaHei"; }
-        .lobby-btn { display: block; width: 100%; padding: 15px; margin-bottom: 15px; border: 1px solid var(--neon-blue); background: transparent; color: var(--neon-blue); font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; letter-spacing: 2px; }
-        .lobby-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
-        .room-code-display { margin-top: 20px; border-top: 1px dashed #444; padding-top: 20px; }
-        .code-big { font-size: 32px; letter-spacing: 5px; color: var(--neon-green); margin: 15px 0; font-family: monospace; border: 1px dashed var(--neon-green); padding: 10px; }
-        #input-room-area input { background: transparent; border: 1px solid #555; color: #fff; padding: 10px; width: 70%; font-size: 20px; text-align: center; letter-spacing: 3px; margin-bottom: 15px; text-transform: uppercase; }
-        #online-status { display: inline-block; margin-left: 10px; font-size: 12px; color: var(--neon-green); text-shadow: 0 0 5px var(--neon-green); display: none; }
     </style>
 </head>
 <body>
