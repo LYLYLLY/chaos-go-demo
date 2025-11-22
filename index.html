@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>混沌棋 - 霓虹战区 (联机版)</title>
+    <title>混沌围棋 (联机版)</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -18,6 +18,7 @@
             --line-glow: #00f3ff;
             --text-main: #e0f7fa;
             --neon-blue: #00f3ff; --neon-pink: #bc13fe; --neon-red: #ff073a; --neon-green: #39ff14;
+            --neon-orange: #ff9f43; /* 新增橙色用于认输按钮 */
             --c-normal: #7f8c8d; --c-shock: #ff9f43; --c-bomb: #ff073a; --c-convert: #d63031; --c-speed: #00f3ff; --c-assimilate: #39ff14;
         }
 
@@ -89,6 +90,9 @@
         .btn-pass { background: var(--c-normal); color: #fff; } 
         .btn-pass:hover { background: #95a5a6; box-shadow: 0 0 10px #95a5a6; }
         
+        .btn-resign { background: var(--neon-orange); color: #fff; } /* 认输按钮样式 */
+        .btn-resign:hover { background: #e67e22; box-shadow: 0 0 15px var(--neon-orange); }
+
         .btn-reset { background: var(--neon-red); color: #fff; } 
         .btn-reset:hover { background: #ff3f34; box-shadow: 0 0 15px var(--neon-red); }
 
@@ -131,7 +135,7 @@
 <div id="app">
     <div id="lobby-overlay">
         <div class="lobby-box">
-            <div class="lobby-title">霓虹战场</div>
+            <div class="lobby-title">混沌围棋</div>
             <div id="lobby-menu">
                 <button class="lobby-btn" onclick="Lobby.local()">本地对战</button>
                 <button class="lobby-btn" onclick="Lobby.create()">创建房间 (房主)</button>
@@ -163,7 +167,7 @@
 
     <div id="sidebar">
         <div class="header">
-            <h2>混沌棋 <span id="online-status">● 联机中</span></h2>
+            <h2>混沌围棋 <span id="online-status">● 联机中</span></h2>
             <div id="phase-display" class="turn-badge safe">安全发育期</div>
         </div>
 
@@ -189,6 +193,7 @@
 
         <div class="controls">
             <button class="btn-pass" onclick="Game.passTurn()">虚着</button>
+            <button class="btn-resign" onclick="Game.resign()">认输</button>
             <button class="btn-reset" onclick="location.reload()">退出</button>
         </div>
     </div>
@@ -196,7 +201,7 @@
 
 <script>
 // ---------------------------------------------------------
-// 🔴 Firebase 配置
+// 🔴 Firebase Config
 // ---------------------------------------------------------
 const firebaseConfig = {
   apiKey: "AIzaSyAdLQ38j8gMeVf7A5476gdDBvgZJifVBj4",
@@ -215,7 +220,7 @@ try {
     if (firebaseConfig.apiKey) {
         firebase.initializeApp(firebaseConfig);
         db = firebase.database();
-        console.log("Firebase 已就绪");
+        console.log("Firebase Initialized");
     }
 } catch (e) { console.error("Firebase Init Error", e); }
 
@@ -463,6 +468,11 @@ const Game = {
         UI.updateStatus();
         UI.renderCard(this.currentEvent);
         
+        if(this.gameOver) {
+            UI.toast("游戏已结束");
+            return;
+        }
+
         // 如果是我的回合，提示
         if(Lobby.isOnline && this.turn === Lobby.myRole && !this.gameOver) {
             UI.toast("轮到你了！");
@@ -644,9 +654,31 @@ const Game = {
         if (Lobby.isOnline && Lobby.myRole !== this.turn) return;
         UI.log(`[${this.pName()}] 虚着`);
         this.passCount++;
-        if (this.passCount >= 2) { this.gameOver = true; UI.toast("游戏结束"); return; }
+        if (this.passCount >= 2) { 
+            this.gameOver = true; 
+            Lobby.syncState(this.exportState());
+            UI.toast("游戏结束"); 
+            return; 
+        }
         this.prevBoardHash = JSON.stringify(this.board);
         this.switchTurn();
+    },
+    resign() {
+        if (this.gameOver) return;
+        // 联机模式下，点击即认输
+        if (Lobby.isOnline) {
+            const loser = Lobby.myRole === BLACK ? '黑方' : '白方';
+            this.gameOver = true;
+            UI.log(`[系统] ${loser} 认输了`);
+            Juice.announce(`${loser} 认输！`);
+            Lobby.syncState(this.exportState());
+        } else {
+            // 本地模式，当前回合方认输
+            const loser = this.turn === BLACK ? '黑方' : '白方';
+            this.gameOver = true;
+            UI.log(`[系统] ${loser} 认输了`);
+            Juice.announce(`${loser} 认输！`);
+        }
     },
     pName() { return this.turn === BLACK ? '黑方' : '白方'; },
     onBoard(x, y) { return x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE; },
@@ -763,6 +795,22 @@ const UI = {
 
 // 只有在非联机模式下才自动启动，联机模式等待创建房间
 if(!Lobby.isOnline) Game.init();
+
+// --- 优化: iOS 音频解锁 ---
+document.body.addEventListener('click', () => {
+    if (SFX.ctx && SFX.ctx.state === 'suspended') {
+        SFX.ctx.resume();
+    } else if (!SFX.ctx) {
+        SFX.init();
+    }
+}, { once: true });
+
+// --- 优化: 尝试保持屏幕常亮 ---
+if ('wakeLock' in navigator) {
+    navigator.wakeLock.request('screen').catch(err => {
+        // 静默失败即可
+    });
+}
 
 </script>
 </body>
